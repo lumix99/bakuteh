@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Chat Example</title>
+
+
+</head>
+
+<body>
+    <div id="msgbox"></div>
+    <div id="login">
+        <input type="text" id="room" placeholder="room" />
+        <input type="text" id="username" placeholder="username" />
+        <input type="button" value="login" onclick="login()" />
+
+    </div>
+    <div id="sendbox">
+        <input type="text" id="msg" size="64" autofocus />
+        <input type="button" value="Send" onclick="sendMsg()" />
+    </div>
+</body>
+
+</html>
+
+<script type="text/javascript">
+    let ws = null;
+    let username;
+    let room;
+
+    function reset() {
+        document.getElementById("login").style.display = "block";
+        document.getElementById("sendbox").style.display = "none";
+        ws = null;
+        username = null;
+        room = null;
+    }
+
+
+    function newMsg(msg) {
+        var box = document.getElementById("msgbox");
+        let doScroll = box.scrollTop > box.scrollHeight - box.clientHeight - 1;
+
+        let item = document.createElement("div");
+        item.innerHTML = String(msg);
+        box.appendChild(item);
+        if (doScroll) {
+            box.scrollTop = box.scrollHeight - box.clientHeight;
+        }
+    }
+
+    function login() {
+        username = document.getElementById("username").value;
+        room = document.getElementById("room").value;
+        ws = new WebSocket(`ws://127.0.0.1:8080?room=${room}&username=${username}`);
+        ws.onopen = function () {
+            console.log("open")
+            document.getElementById("login").style.display = "none";
+            document.getElementById("sendbox").style.display = "block";
+        }
+        ws.onclose = function (evt) {
+            console.log("close", evt);
+            reset()
+        };
+        ws.onerror = function (err) {
+            console.log("error", err);
+            reset()
+        }
+        ws.onmessage = function (evt) {
+            console.log("receive data", evt.data)
+            let msg = JSON.parse(evt.data)
+            if (msg.action == "chat") {
+      
+                newMsg(`${msg.data.user}:${msg.data.msg}`)
+            }
+
+        };
+
+    }
+
+    function sendMsg() {
+        if (ws == null){
+            return;
+        }
+
+        msg = document.getElementById("msg");
+
+        let data = {id:0, action:"chat",data:msg.value}
+        console.log("send msg", data)
+        ws.send(JSON.stringify(data));
+        msg.value = "";
+    }
+
+    window.onload = reset
+</script>
